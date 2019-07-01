@@ -43,9 +43,9 @@ type Data struct {
 // Threshold contains the specification for a threshold of
 // a Configuration
 type Threshold struct {
-	Predicate string `json:"predicate"`
-	Level     uint16 `json:"level"`
-	Value     int64  `json:"value"`
+	Predicate string  `json:"predicate"`
+	Level     uint16  `json:"level"`
+	Value     float64 `json:"value"`
 }
 
 // MetaInformation contains registration metadata for the Configuration

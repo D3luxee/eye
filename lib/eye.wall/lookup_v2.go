@@ -77,7 +77,7 @@ func (l *Lookup) v2Process(lookID string, pr *v2.Result) (map[string]Threshold, 
 		}
 		l.v2UpdateCachedActivation(i.ID, i.ActivatedAt)
 
-		t.Thresholds = make(map[string]int64)
+		t.Thresholds = make(map[string]float64)
 		for _, tl := range i.Data[0].Thresholds {
 			lvl := strconv.FormatUint(uint64(tl.Level), 10)
 			t.Predicate = tl.Predicate

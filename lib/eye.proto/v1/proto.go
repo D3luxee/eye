@@ -45,9 +45,9 @@ type ConfigurationMetaData struct {
 // ConfigurationThreshold contains the specification for a threshold of
 // a ConfigurationItem
 type ConfigurationThreshold struct {
-	Predicate string `json:"predicate"`
-	Level     uint16 `json:"level"`
-	Value     int64  `json:"value"`
+	Predicate string  `json:"predicate"`
+	Level     uint16  `json:"level"`
+	Value     float64 `json:"value"`
 }
 
 // vim: ts=4 sw=4 sts=4 noet fenc=utf-8 ffs=unix

@@ -87,7 +87,7 @@ func (l *Lookup) v1Process(lookID string, t *v1.ConfigurationData) (map[string]T
 			MetaSource:     i.Metadata.Source,
 			MetaTargethost: i.Metadata.Targethost,
 		}
-		t.Thresholds = make(map[string]int64)
+		t.Thresholds = make(map[string]float64)
 		for _, tl := range i.Thresholds {
 			lvl := strconv.FormatUint(uint64(tl.Level), 10)
 			t.Predicate = tl.Predicate
