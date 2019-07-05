@@ -12,6 +12,7 @@ package eye // import "github.com/solnx/eye/internal/eye"
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -210,6 +211,9 @@ abort:
 	mr.ServerError(err)
 
 rollback:
+	if mr.Error == nil {
+		mr.ServerError(fmt.Errorf("transaction aborted"))
+	}
 	tx.Rollback()
 }
 
@@ -337,6 +341,9 @@ abort:
 	w.appLog.Debugf("Section=%s Action=%s Error=%s", Section, Action, err.Error())
 	mr.ServerError(err)
 rollback:
+	if mr.Error == nil {
+		mr.ServerError(fmt.Errorf("transaction aborted"))
+	}
 	tx.Rollback()
 }
 
@@ -455,6 +462,9 @@ abort:
 	mr.ServerError(err)
 
 rollback:
+	if mr.Error == nil {
+		mr.ServerError(fmt.Errorf("transaction aborted"))
+	}
 	tx.Rollback()
 }
 

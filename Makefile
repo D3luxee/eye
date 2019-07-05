@@ -11,14 +11,6 @@ all: validate
 validate:
 	@go build ./...
 	@go vet ./...
-	@go tool vet -shadow ./cmd/eye
-	@go tool vet -shadow ./internal/eye
-	@go tool vet -shadow ./internal/eye.mock
-	@go tool vet -shadow ./internal/eye.msg
-	@go tool vet -shadow ./internal/eye.rest
-	@go tool vet -shadow ./internal/eye.stmt
-	@go tool vet -shadow ./lib/eye.proto
-	@go tool vet -shadow ./lib/eye.wall
 	@golint ./...
 	@ineffassign ./cmd/eye
 	@ineffassign ./internal/eye

@@ -1,13 +1,19 @@
-.TH "eye" 1 "January 17, 2019" "eye 0.9.0-ed80924/master" "eye"
+.TH "eye" 1 "July 1, 2019" "eye 0.9.0-131b704/float64" "eye"
 .SH NAME
 eye
 \- Configuration Lookup service
 .SH SYNOPSIS
-eye  [\-c|\-\-config /srv/eye/conf/eye.conf] [\-h|\-\-help] [\-\-version]
+eye  [\-\-cpuprofile ] [\-\-memprofile ] [\-c|\-\-config /srv/eye/conf/eye.conf] [\-h|\-\-help] [\-\-version]
 .SH DESCRIPTION
 Eye stores threshold configuration profiles in a Format suitable for Cyclone metric monitoring.
 
 .SH OPTIONS
+.TP
+\-\-cpuprofile 
+write cpu profile to file
+.TP
+\-\-memprofile 
+write memory profile to file
 .TP
 \-c,\-\-config /srv/eye/conf/eye.conf
 Configuration file
