@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS eye.provisions (
   configurationID         uuid            NOT NULL,
   provision_period        tstzrange       NOT NULL DEFAULT tstzrange(NOW()::timestamptz(3), 'infinity', '[]'),
   tasks                   varchar(128)[]  NOT NULL,
-  EXCLUDE USING gist (uuid_to_bytea(configurationID) WITH =, provision_period WITH &&),
+  EXCLUDE USING gist (uuid_to_bytea(configurationID) WITH =, provision_period WITH &&) DEFERRABLE,
   CONSTRAINT provisionedAt_utc CHECK( EXTRACT( TIMEZONE FROM lower( provision_period ) ) = '0' ),
   CONSTRAINT deprovisionedAt_utc CHECK( EXTRACT( TIMEZONE FROM upper( provision_period ) ) = '0' ),
   FOREIGN KEY ( dataID, configurationID ) REFERENCES eye.configurations_data( dataID, configurationID ) ON DELETE RESTRICT

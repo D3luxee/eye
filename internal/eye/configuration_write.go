@@ -140,7 +140,7 @@ func (w *ConfigurationWrite) add(q *msg.Request, mr *msg.Result) {
 	// configurations 15 minutes into the future.
 	// For this reason there could be a (still valid) previous
 	// configuration.
-	if err = w.txCfgLoadActive(tx, q, &previous); err == sql.ErrNoRows {
+	if err = w.txCfgLoadActive(tx, q, &previous, w.appLog); err == sql.ErrNoRows {
 		// no still valid data is a non-error state, the 15minutes could
 		// have expired or this is the first rollout
 		skipInvalidatePrevious = true
@@ -261,12 +261,15 @@ func (w *ConfigurationWrite) remove(q *msg.Request, mr *msg.Result) {
 	// it; this is required for requests with q.Flags.AlarmClearing set
 	// to true so that the OK event can be constructed with the correct
 	// metadata
-	if err = w.txCfgLoadActive(tx, q, &configuration); err == sql.ErrNoRows {
+	if err = w.txCfgLoadActive(tx, q, &configuration, w.appLog); err == sql.ErrNoRows {
 		// there is no active configuration that can be loaded for clearing or invalidation
 		mr.Flags.AlarmClearing = false
 		mr.Flags.CacheInvalidation = false
-		// that which does not exist can not be deleted
-		goto commitTx
+		//but there could still be an configuration which has to be deleted
+		if &configuration == nil || len(configuration.Data) == 0 {
+			//there was no configuration, this is a noop
+			goto commitTx
+		}
 	} else if err != nil {
 		goto abort
 	}
@@ -371,41 +374,49 @@ func (w *ConfigurationWrite) update(q *msg.Request, mr *msg.Result) {
 
 	// load the current configuration. for Update requests, there must
 	// be currently valid data that is being updated
-	if err = w.txCfgLoadActive(tx, q, &prevCfg); err == sql.ErrNoRows {
+	if err = w.txCfgLoadActive(tx, q, &prevCfg, w.appLog); err == sql.ErrNoRows {
 		// that which does not exist can not be updated
-		mr.NotFound(err)
-		goto rollback
+		if &prevCfg != nil && len(prevCfg.Data) > 0 {
+			err = nil
+		}
 	} else if err != nil {
+		w.appLog.Errorf("Section=%s Action1=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, "txCfgLoadMatch was not ok")
 		goto abort
 	}
+	if err == nil {
 
-	// update current data
-	prevData = prevCfg.Data[0]
+		//there is a old configuration which needs an update
+		// update current data
+		prevData = prevCfg.Data[0]
+		prevTS := transactionTS.Truncate(1 * time.Second)
+		// update validity of current data
+		prevData.Info.ValidUntil = v2.FormatValidity(prevTS)
+		if ok, err = w.txSetDataValidity(tx, mr,
+			v2.ParseValidity(prevData.Info.ValidFrom),
+			prevTS,
+			prevData.ID,
+		); err != nil {
+			w.appLog.Errorf("Section=%s Action2=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, err.Error())
+			goto abort
+		} else if !ok {
+			w.appLog.Errorf("Section=%s Action2=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, "txSetDataValidity was not ok")
+			goto rollback
+		}
 
-	// update validity of current data
-	prevData.Info.ValidUntil = v2.FormatValidity(transactionTS)
-	if ok, err = w.txSetDataValidity(tx, mr,
-		v2.ParseValidity(prevData.Info.ValidFrom),
-		transactionTS,
-		prevData.ID,
-	); err != nil {
-		goto abort
-	} else if !ok {
-		goto rollback
+		// update provisioning history of current data
+		prevData.Info.DeprovisionedAt = v2.FormatProvision(prevTS)
+		if ok, err = w.txFinalizeProvision(tx, mr,
+			prevTS,
+			prevData.ID,
+			msg.TaskUpdate,
+		); err != nil {
+			w.appLog.Errorf("Section=%s Action3=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, err.Error())
+			goto abort
+		} else if !ok {
+			w.appLog.Errorf("Section=%s Action3=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, "txFinalizeProvision was not ok")
+			goto rollback
+		}
 	}
-
-	// update provisioning history of current data
-	prevData.Info.DeprovisionedAt = v2.FormatProvision(transactionTS)
-	if ok, err = w.txFinalizeProvision(tx, mr,
-		transactionTS,
-		prevData.ID,
-		msg.TaskUpdate,
-	); err != nil {
-		goto abort
-	} else if !ok {
-		goto rollback
-	}
-
 	// insert new data
 	// always stored with ActivatedAt set to unknown inside the stored JSON
 	q.Configuration.ActivatedAt = `unknown`
@@ -421,14 +432,17 @@ func (w *ConfigurationWrite) update(q *msg.Request, mr *msg.Result) {
 
 	// insert configuration data as valid from transactionTS to infinity
 	// and record provision request
+
 	if ok, err = w.txInsertCfgData(tx, mr,
 		data.ID,
 		q.Configuration.ID,
 		transactionTS,
 		jsonb,
 	); err != nil {
+		w.appLog.Errorf("Section=%s Action4=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, err.Error())
 		goto abort
 	} else if !ok {
+		w.appLog.Errorf("Section=%s Action4=%s ID=%s Error=%s", Section, Action, q.Configuration.ID, "txInsertCfgData was not ok")
 		goto rollback
 	}
 
@@ -448,10 +462,17 @@ func (w *ConfigurationWrite) update(q *msg.Request, mr *msg.Result) {
 	}
 
 	// prevCfg has the populated ActivatedAt field
-	prevCfg.Data = []v2.Data{
-		data,
-		prevData,
+	if len(prevCfg.Data) == 0 {
+		prevCfg.Data = []v2.Data{
+			data,
+		}
+	} else {
+		prevCfg.Data = []v2.Data{
+			data,
+			prevData,
+		}
 	}
+
 	mr.Configuration = append(mr.Configuration, prevCfg)
 
 	mr.OK()

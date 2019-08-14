@@ -269,7 +269,7 @@ func (x *Rest) fetchPushDeployment(w *http.ResponseWriter, q *msg.Request) {
 		x.replyInternalError(w, q, err)
 		return
 	}
-	x.appLog.Infoln("Received deployment notification for lookup hash: ", q.LookupHash)
+	x.appLog.Infoln("Received deployment notification for lookup hash: ", q.LookupHash, "Task:", q.ConfigurationTask)
 	if err := resolveFlags(nil, q); err != nil {
 		x.appLog.Errorf("Section=%s Action=%s Error=%s", "Deployment", "fetchPushDeployment", err.Error())
 		x.replyBadRequest(w, q, err)

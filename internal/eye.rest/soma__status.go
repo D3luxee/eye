@@ -32,8 +32,18 @@ func (x *Rest) somaStatusUpdate(r *msg.Result) {
 
 	switch {
 	case r.Error != nil:
+		if len(r.Configuration) >= 1 {
+			x.appLog.Errorln(`DeploymentID`, r.Configuration[0].ID, `Section`, r.Section, `Action `, r.Action, `Error`, r.Error.Error())
+		} else {
+			x.appLog.Errorln(`DeploymentID not available`, `Section`, r.Section, `Action `, r.Action, `Error`, r.Error.Error())
+		}
 		feedback = `failed`
 	case r.Code >= 400:
+		if len(r.Configuration) >= 1 {
+			x.appLog.Errorln(`DeploymentID`, r.Configuration[0].ID, `Error: Returncode >= 400`)
+		} else {
+			x.appLog.Errorln(`DeploymentID not available`, `Error: Returncode >= 400`)
+		}
 		feedback = `failed`
 	default:
 		feedback = `success`

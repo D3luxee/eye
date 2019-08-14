@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/lib/pq"
 	msg "github.com/solnx/eye/internal/eye.msg"
 	"github.com/solnx/eye/lib/eye.proto/v2"
@@ -31,7 +32,7 @@ func init() {
 // If no such active configuration exists, it returns sql.ErrNoRows. If
 // a matching configuration is found, it is populated into cfg.
 func (w *ConfigurationWrite) txCfgLoadActive(tx *sql.Tx, q *msg.Request,
-	cfg *v2.Configuration) (err error) {
+	cfg *v2.Configuration, logger *logrus.Logger) (err error) {
 
 	var (
 		dataID, confResult         string
@@ -41,7 +42,6 @@ func (w *ConfigurationWrite) txCfgLoadActive(tx *sql.Tx, q *msg.Request,
 		activatedAt                time.Time
 		data                       v2.Data
 	)
-
 	// database index ensures there is no overlap in validity ranges
 	if err = tx.Stmt(w.stmtCfgSelectValidForUpdate).QueryRow(
 		q.Configuration.ID,
@@ -73,6 +73,7 @@ func (w *ConfigurationWrite) txCfgLoadActive(tx *sql.Tx, q *msg.Request,
 		cfg = nil
 		return
 	} else if err != nil {
+		logger.Errorln(q.Configuration.ID, "txCfgLoadActive: stmtCfgShow err:", err.Error())
 		cfg = nil
 		return
 	}
@@ -90,7 +91,8 @@ func (w *ConfigurationWrite) txCfgLoadActive(tx *sql.Tx, q *msg.Request,
 		&activatedAt,
 	); err == sql.ErrNoRows {
 		cfg.ActivatedAt = `never`
-	} else if err != nil {
+	} else if err != nil && err != sql.ErrNoRows {
+		logger.Errorln(q.Configuration.ID, "txCfgLoadActive: stmtActivationGet err:", err.Error())
 		cfg = nil
 		return
 	} else {
